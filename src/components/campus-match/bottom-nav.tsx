@@ -20,7 +20,7 @@ export function BottomNav({ activeTab, setActiveTab, unreadCount = 1 }: BottomNa
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-stone-200/80 bg-white/95 backdrop-blur-2xl px-3 py-2 pb-safe shadow-sm">
+    <nav className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-stone-200/80 bg-white/95 backdrop-blur-2xl px-3 py-2 pb-safe shadow-sm">
       <div className="mx-auto flex max-w-lg items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;

@@ -105,7 +105,7 @@ export function MessagesTab({
   // IF AN ACTIVE CHAT THREAD IS OPEN
   if (activeMatch) {
     return (
-      <div className="fixed inset-0 z-[999] bg-[#f7f4ee] flex flex-col max-w-lg mx-auto pb-16 overflow-hidden">
+      <div className="fixed inset-0 z-[500] bg-[#f7f4ee] flex flex-col max-w-lg mx-auto pb-16 overflow-hidden">
         {/* Chat Thread Header */}
         <div className="flex items-center justify-between border-b border-stone-200 bg-white/95 backdrop-blur-md px-4 pt-10 sm:pt-3 pb-3 shadow-sm shrink-0">
           <div className="flex items-center gap-3 min-w-0">

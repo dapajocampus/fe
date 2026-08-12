@@ -198,7 +198,7 @@ export default function Home() {
       />
 
       {/* Main Tab View */}
-      <main className="relative z-10 mx-auto max-w-lg">
+      <main className="mx-auto max-w-lg">
         {activeTab === "discover" && (
           <DiscoverTab
             profiles={swipeProfiles}
