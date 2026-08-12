@@ -1,0 +1,19 @@
+{
+  "name": "DAPAJO CAMPUS : student-only dating & connection platform",
+  "short_name": "DAPAJO CAMPUS",
+  "description": "DAPAJO CAMPUS : student-only dating & connection platform khusus mahasiswa terverifikasi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ee",
+  "theme_color": "#f7f4ee",
+  "orientation": "portrait",
+  "categories": ["social", "lifestyle", "education"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
