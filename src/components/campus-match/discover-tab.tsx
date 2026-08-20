@@ -15,6 +15,8 @@ import {
   Square,
   Sparkles,
   ShieldCheck,
+  ShieldAlert,
+  Lock,
 } from "lucide-react";
 import { SwipeProfile } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,8 @@ interface DiscoverTabProps {
   onRewind: () => void;
   canRewind: boolean;
   onReportUser: (userId: string, userName: string) => void;
+  isVerified?: boolean;
+  onOpenVerification?: () => void;
 }
 
 export function DiscoverTab({
@@ -37,6 +41,8 @@ export function DiscoverTab({
   onRewind,
   canRewind,
   onReportUser,
+  isVerified = true,
+  onOpenVerification,
 }: DiscoverTabProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -173,8 +179,47 @@ export function DiscoverTab({
 
   return (
     <div className="relative flex flex-col items-center justify-between w-full h-[calc(100vh-175px)] max-w-md mx-auto px-3 pt-2 pb-2 overflow-hidden">
+      {/* STUDENT VERIFICATION LOCK OVERLAY IF NOT VERIFIED */}
+      {!isVerified && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-md rounded-3xl animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-3xl border border-rose-500/40 bg-white p-5 text-center shadow-2xl space-y-4 my-auto">
+            {/* Icon */}
+            <div className="relative inline-flex items-center justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg animate-bounce">
+                <ShieldAlert className="h-9 w-9 fill-rose-500/20" />
+              </div>
+              <Lock className="absolute -top-2 -right-2 h-6 w-6 text-amber-500 fill-amber-400" />
+            </div>
+
+            {/* Text */}
+            <div className="space-y-1.5">
+              <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+                Verifikasi Mahasiswa Diperlukan 🎓
+              </span>
+              <h3 className="text-xl font-bold text-stone-900 tracking-tight">
+                Belum Diberikan Akses Geser Card
+              </h3>
+              <p className="text-xs text-stone-600 leading-relaxed">
+                Demi keamanan, privasi, dan keaslian status sesama mahasiswa, kamu <strong>wajib memverifikasi NIM / Email Kampus</strong> sebelum dapat mulai mencari atau menggeser card mahasiswa.
+              </p>
+            </div>
+
+            {/* Action Button */}
+            <Button
+              onClick={onOpenVerification}
+              size="lg"
+              variant="glow"
+              className="w-full text-xs font-bold gap-2 bg-rose-500 hover:bg-rose-600 text-white shadow-md rounded-full py-3 cursor-pointer"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Verifikasi Identitas Mahasiswa Sekarang
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Card Stack Container */}
-      <div className="relative w-full h-full flex-1">
+      <div className={`relative w-full h-full flex-1 transition-all ${!isVerified ? "blur-xl opacity-20 pointer-events-none select-none filter" : ""}`}>
         {/* Next Card Background Preview */}
         {profiles[currentIndex + 1] && (
           <div className="absolute inset-0 rounded-3xl border border-stone-200 bg-white scale-95 translate-y-3 opacity-60 pointer-events-none overflow-hidden shadow-sm">
@@ -187,7 +232,7 @@ export function DiscoverTab({
         )}
 
         {/* Current Active Swipe Card with Smooth Exit Animation */}
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence>
           <motion.div
             key={currentProfile.id}
             style={{ x, rotate }}
@@ -381,7 +426,12 @@ export function DiscoverTab({
       {/* MODAL 1: TEXT SINGKAT */}
       <AnimatePresence>
         {showQuickTextModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-4"
+          >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -419,14 +469,19 @@ export function DiscoverTab({
                 </div>
               </form>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* MODAL 2: VOICE & VIDEO NOTE */}
       <AnimatePresence>
         {showMediaNoteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-4"
+          >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -485,14 +540,19 @@ export function DiscoverTab({
                 </div>
               )}
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Profile Detail Drawer */}
       <AnimatePresence>
         {showDetailModal && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-stone-900/60 backdrop-blur-sm p-0 sm:p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-stone-900/60 backdrop-blur-sm p-0 sm:p-4"
+          >
             <motion.div
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -527,7 +587,7 @@ export function DiscoverTab({
                 </Button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

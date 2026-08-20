@@ -186,6 +186,16 @@ export default function Home() {
     );
   }
 
+  const handleToggleVerification = () => {
+    setCurrentUser((prev) => ({
+      ...prev,
+      verification: {
+        ...prev.verification,
+        isVerified: !prev.verification.isVerified,
+      },
+    }));
+  };
+
   // 4. MAIN APP STAGE
   return (
     <div className="min-h-screen bg-[#f7f4ee] text-stone-900 selection:bg-rose-500 selection:text-white">
@@ -194,6 +204,7 @@ export default function Home() {
         currentUser={currentUser}
         onOpenVerification={() => setIsVerificationOpen(true)}
         onOpenPreferences={() => setActiveTab("profile")}
+        onToggleVerification={handleToggleVerification}
         activeTab={activeTab}
       />
 
@@ -208,6 +219,8 @@ export default function Home() {
             onRewind={handleRewind}
             canRewind={history.length > 0}
             onReportUser={handleOpenReport}
+            isVerified={currentUser.verification.isVerified}
+            onOpenVerification={() => setIsVerificationOpen(true)}
           />
         )}
 

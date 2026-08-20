@@ -37,9 +37,10 @@ export function BottomNav({ activeTab, setActiveTab, unreadCount = 1 }: BottomNa
             >
               {isActive && (
                 <motion.div
-                  layoutId="bottomNavIndicator"
+                  initial={{ scaleX: 0, opacity: 0 }}
+                  animate={{ scaleX: 1, opacity: 1 }}
                   className="absolute -top-2 h-1 w-10 rounded-full bg-rose-500 shadow-sm"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  transition={{ duration: 0.2 }}
                 />
               )}
 

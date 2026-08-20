@@ -74,7 +74,7 @@ export function OnboardingFlow({ onComplete, onGoLogin }: OnboardingFlowProps) {
 
       {/* Slide Content Carousel */}
       <div className="w-full flex-1 flex flex-col items-center justify-center my-auto text-center px-4">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           <motion.div
             key={activeSlide}
             initial={{ opacity: 0, x: 50 }}

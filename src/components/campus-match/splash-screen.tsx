@@ -9,26 +9,16 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onComplete }: SplashScreenProps) {
-  const [isVisible, setIsVisible] = useState(true);
-
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(onComplete, 500);
+      onComplete();
     }, 2000);
 
     return () => clearTimeout(timer);
   }, [onComplete]);
 
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-[#f7f4ee] px-6 py-12 text-center"
-        >
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-[#f7f4ee] px-6 py-12 text-center animate-in fade-in duration-300">
           <div className="w-full flex-1 flex flex-col items-center justify-center space-y-6">
             {/* Official Logo Display */}
             <motion.div
@@ -73,8 +63,6 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             </div>
             <span className="text-[10px] text-stone-500 font-medium">Khusus Mahasiswa Terverifikasi Indonesia</span>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    </div>
   );
 }

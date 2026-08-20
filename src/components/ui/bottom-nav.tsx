@@ -35,9 +35,10 @@ export function BottomNav() {
             >
               {isActive && (
                 <motion.div
-                  layoutId="activeTabIndicator"
+                  initial={{ scaleX: 0, opacity: 0 }}
+                  animate={{ scaleX: 1, opacity: 1 }}
                   className="absolute -top-2 h-1 w-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  transition={{ duration: 0.2 }}
                 />
               )}
               <Icon className={cn("h-5 w-5 transition-transform", isActive && "scale-110")} />

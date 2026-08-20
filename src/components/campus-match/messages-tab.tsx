@@ -1,22 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   MessageSquare,
-  Mic,
-  Video,
+  Search,
+  ArrowLeft,
   Send,
+  Mic,
+  Play,
+  Pause,
   MoreVertical,
   ShieldCheck,
   ShieldAlert,
-  Play,
-  Pause,
-  ArrowLeft,
-  CheckCheck,
   HeartOff,
   UserX,
   X,
-  AlertTriangle,
+  CheckCheck,
+  Sparkles,
 } from "lucide-react";
 import { MatchItem, ChatMessage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,19 @@ export function MessagesTab({
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [showUnmatchModal, setShowUnmatchModal] = useState(false);
 
+  // Auto-Scroll to Bottom Ref
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (activeMatch) {
+      scrollToBottom();
+    }
+  }, [chatMessages, activeMatch]);
+
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() || !activeMatch) return;
@@ -67,19 +80,19 @@ export function MessagesTab({
   const handleSimulateVoiceNote = () => {
     if (!activeMatch) return;
     setIsRecordingVoice(true);
+
     setTimeout(() => {
       setIsRecordingVoice(false);
-      const newVoiceMsg: ChatMessage = {
+      const voiceMsg: ChatMessage = {
         id: `msg-${Date.now()}`,
         senderId: "user-me",
         type: "voice_note",
-        audioDurationSec: 12,
-        content: "Voice note terkirim (0:12)",
+        audioDurationSec: 14,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         status: "sent",
       };
-      setChatMessages((prev) => [...prev, newVoiceMsg]);
-      onSendMessage(activeMatch.id, "Voice note (0:12)", "voice_note");
+      setChatMessages((prev) => [...prev, voiceMsg]);
+      onSendMessage(activeMatch.id, "Voice note (0:14)", "voice_note");
     }, 1500);
   };
 
@@ -287,6 +300,8 @@ export function MessagesTab({
               </div>
             );
           })}
+          {/* Scroll Anchor */}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Controls Bar */}
@@ -320,7 +335,7 @@ export function MessagesTab({
 
         {/* UNMATCH / BLOCK CONFIRMATION MODAL */}
         {showUnmatchModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-4">
             <div className="w-full max-w-sm rounded-3xl border border-stone-200 bg-white p-5 text-center shadow-xl space-y-4 relative">
               <button
                 onClick={() => setShowUnmatchModal(false)}
@@ -337,29 +352,28 @@ export function MessagesTab({
                 <h3 className="text-base font-bold text-stone-900">
                   Hapus Pasangan dengan {activeMatch.user.name.split(" ")[0]}?
                 </h3>
-                <p className="text-xs text-stone-600 leading-relaxed">
-                  Pasangan akan dihapus dari daftar match & riwayat percakapan Anda.
+                <p className="text-xs text-stone-600">
+                  Koneksi & riwayat obrolan dengan mahasiswa ini akan dihapus secara permanen.
                 </p>
               </div>
 
               <div className="space-y-2 pt-1">
-                <button
+                <Button
                   onClick={handleConfirmUnmatch}
-                  className="w-full rounded-2xl bg-stone-100 hover:bg-stone-200 py-2.5 text-xs font-bold text-stone-800 transition-all cursor-pointer border border-stone-200"
+                  className="w-full text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white rounded-2xl py-2.5"
                 >
-                  💔 Hapus Pasangan (Unmatch)
-                </button>
-
-                <button
+                  Ya, Hapus Pasangan
+                </Button>
+                <Button
                   onClick={handleConfirmBlockAndUnmatch}
-                  className="w-full rounded-2xl bg-rose-500 hover:bg-rose-600 py-2.5 text-xs font-bold text-white transition-all cursor-pointer shadow-sm"
+                  variant="outline"
+                  className="w-full text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50 rounded-2xl py-2.5"
                 >
-                  🚫 Blokir & Hapus Pasangan
-                </button>
-
+                  Blokir & Hapus Pasangan
+                </Button>
                 <button
                   onClick={() => setShowUnmatchModal(false)}
-                  className="w-full text-xs text-stone-500 hover:text-stone-900 py-1 transition-colors font-medium cursor-pointer"
+                  className="text-xs text-stone-500 hover:text-stone-900 pt-1 block mx-auto cursor-pointer"
                 >
                   Batal
                 </button>
@@ -371,119 +385,95 @@ export function MessagesTab({
     );
   }
 
-  // DEFAULT MATCHES & CONVERSATION LIST
+  // DEFAULT MATCHES LIST VIEW
   return (
-    <div className="min-h-[85vh] mx-auto max-w-lg px-4 py-4 pb-24 space-y-5 bg-[#f7f4ee]">
-      {/* 1. MUTUAL MATCHES CAROUSEL */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
-            <span>Mutual Match</span>
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm">
-              {matches.length}
-            </span>
-          </h2>
-          <span className="text-[11px] text-stone-500">Klik avatar untuk chat</span>
-        </div>
-
-        {matches.length === 0 ? (
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 text-center text-xs text-stone-500">
-            Belum ada pasangan. Mulai swipe untuk menemukan Mutual Match!
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-            {matches.map((match) => (
-              <button
-                key={match.id}
-                onClick={() => setActiveMatch(match)}
-                className="flex shrink-0 flex-col items-center gap-1.5 group cursor-pointer"
-              >
-                <div className="relative">
-                  <div className="h-15 w-15 rounded-full p-0.5 bg-rose-500 shadow-sm group-hover:scale-105 transition-transform">
-                    <img
-                      src={match.user.photos[0]}
-                      alt={match.user.name}
-                      className="h-full w-full rounded-full object-cover border-2 border-white"
-                    />
-                  </div>
-                  {match.unread && (
-                    <span className="absolute top-0 right-0 h-3.5 w-3.5 rounded-full bg-rose-500 border-2 border-white" />
-                  )}
-                </div>
-                <span className="text-xs font-semibold text-stone-800 truncate max-w-[65px]">
-                  {match.user.name.split(" ")[0]}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+    <div className="mx-auto max-w-lg px-4 py-4 space-y-5 pb-24 bg-[#f7f4ee]">
+      {/* Header Info */}
+      <div className="space-y-1">
+        <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 text-rose-500 fill-rose-500/20" />
+          <span>Pesan & Pasangan Kampus</span>
+        </h2>
+        <p className="text-xs text-stone-500">Mulai mengobrol dengan mahasiswa yang telah Match denganku</p>
       </div>
 
-      {/* 2. CONVERSATION LIST */}
-      <div className="space-y-2.5">
-        <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-rose-500 fill-rose-500/20" />
-          <span>Pesan Masuk</span>
-        </h2>
+      {/* Horizontal Matches Row */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+            Pasangan Baru ({matches.length})
+          </span>
+          <span className="text-[10px] text-stone-500">Geser untuk melihat</span>
+        </div>
 
-        {matches.length === 0 ? (
-          <div className="rounded-2xl border border-stone-200 bg-white p-6 text-center text-xs text-stone-500 space-y-1">
-            <p className="font-bold text-stone-800">Tidak ada percakapan aktif</p>
-            <p>Pasangan yang dihapus tidak lagi ditampilkan di daftar pesan.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {matches.map((match) => (
-              <div
-                key={match.id}
-                onClick={() => setActiveMatch(match)}
-                className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white p-3 shadow-sm hover:border-rose-500/30 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative shrink-0">
-                    <img
-                      src={match.user.photos[0]}
-                      alt={match.user.name}
-                      className="h-12 w-12 rounded-full object-cover border border-stone-200"
-                    />
-                    <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white" />
-                  </div>
+        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+          {matches.map((match) => (
+            <button
+              key={match.id}
+              onClick={() => setActiveMatch(match)}
+              className="flex flex-col items-center gap-1 shrink-0 group cursor-pointer"
+            >
+              <div className="relative">
+                <img
+                  src={match.user.photos[0]}
+                  alt={match.user.name}
+                  className="h-16 w-16 rounded-2xl object-cover border-2 border-rose-500 group-hover:scale-105 transition-transform shadow-sm"
+                />
+                {match.unread && (
+                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-rose-500 border-2 border-white animate-pulse" />
+                )}
+              </div>
+              <span className="text-[11px] font-bold text-stone-800 truncate max-w-[70px]">
+                {match.user.name.split(" ")[0]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-                  <div className="min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="font-bold text-stone-900 text-sm truncate">{match.user.name}</h3>
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0 fill-emerald-500/20" />
-                    </div>
-                    <p className="text-xs text-stone-500 truncate">{match.lastMessage}</p>
-                  </div>
+      {/* Messages Thread List */}
+      <div className="space-y-2">
+        <span className="text-xs font-bold text-stone-900 uppercase tracking-wider block">
+          Obrolan Aktif
+        </span>
+
+        <div className="rounded-3xl border border-stone-200 bg-white overflow-hidden shadow-sm divide-y divide-stone-100">
+          {matches.map((match) => (
+            <div
+              key={match.id}
+              onClick={() => setActiveMatch(match)}
+              className="p-3.5 flex items-center justify-between hover:bg-stone-50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative shrink-0">
+                  <img
+                    src={match.user.photos[0]}
+                    alt={match.user.name}
+                    className="h-12 w-12 rounded-2xl object-cover border border-stone-200 shadow-xs"
+                  />
+                  {match.unread && (
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white animate-pulse" />
+                  )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 ml-2">
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-[10px] text-stone-400 font-medium">{match.lastMessageTime}</span>
-                    {match.unread && (
-                      <span className="h-2 w-2 rounded-full bg-rose-500" />
-                    )}
+                <div className="min-w-0 space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-bold text-stone-900 text-sm truncate">{match.user.name}</h3>
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 fill-emerald-500/20 shrink-0" />
                   </div>
-
-                  {/* Quick Unmatch Trash Icon Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onUnmatchMatch) {
-                        onUnmatchMatch(match.id);
-                      }
-                    }}
-                    className="opacity-0 group-hover:opacity-100 rounded-full p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
-                    title="Hapus Pasangan (Unmatch)"
-                  >
-                    <HeartOff className="h-4 w-4" />
-                  </button>
+                  <p className="text-xs text-stone-500 truncate">{match.lastMessage}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+
+              <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                <span className="text-[10px] text-stone-400 font-mono">{match.lastMessageTime}</span>
+                {match.unread && (
+                  <span className="h-2 w-2 rounded-full bg-rose-500 shadow-sm" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
