@@ -29,26 +29,22 @@ export function PhotoGalleryModal({ photos: initialPhotos, onSavePhotos, onClose
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newPhotoUrls: string[] = [];
     Array.from(files).forEach((file) => {
-      newPhotoUrls.push(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        let base64String = reader.result as string;
+        // Keep the video flag logic for frontend rendering
+        if (file.type.startsWith("video/")) {
+          base64String += "#video";
+        }
+        setPhotoList((prev) => [...prev, base64String].slice(0, 100));
+      };
+      reader.readAsDataURL(file);
     });
-
-    setPhotoList((prev) => [...prev, ...newPhotoUrls].slice(0, 100));
   };
 
-  const handleAddSamplePhoto = () => {
-    const sampleAvatars = [
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80",
-    ];
-    const randomPhoto = sampleAvatars[photoList.length % sampleAvatars.length];
-    if (photoList.length < 100) {
-      setPhotoList((prev) => [...prev, randomPhoto]);
-    }
-  };
+
+
 
   const handleRemovePhoto = (indexToRemove: number) => {
     if (photoList.length <= 1) {

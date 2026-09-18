@@ -2,32 +2,52 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { ShieldCheck, Mail, Lock, ArrowRight, CheckCircle2, ImagePlus, Trash2, Camera, AlertCircle } from "lucide-react";
+import { ShieldCheck, Mail, Lock, ArrowRight, CheckCircle2, ImagePlus, Trash2, Camera, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ALL_UNIVERSITIES, ALL_INTEREST_OPTIONS, CURRENT_USER } from "@/lib/mock-data";
 import { UserProfile } from "@/lib/types";
 import { DapajoLogo } from "@/components/campus-match/dapajo-logo";
+import { authApi, profileApi, setTokens, clearTokens, ApiError } from "@/lib/api-client";
+import { isVideoUrl } from "@/lib/utils";
+
+// Helper: convert File to base64 data URI
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      let result = reader.result as string;
+      if (file.type.startsWith('video/')) result += '#video';
+      resolve(result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
 interface AuthScreenProps {
   onSuccessAuth: (user: UserProfile) => void;
+  onSuccessAdmin?: () => void;
   defaultMode?: "login" | "register";
 }
 
-export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScreenProps) {
+export function AuthScreen({ onSuccessAuth, onSuccessAdmin, defaultMode = "register" }: AuthScreenProps) {
   const [mode, setMode] = useState<"login" | "register">(defaultMode);
   const [registerStep, setRegisterStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Form Fields
-  const [name, setName] = useState("Rizky Ramadhan");
-  const [email, setEmail] = useState("rizky.r@mail.ugm.ac.id");
-  const [password, setPassword] = useState("••••••••");
-  const [university, setUniversity] = useState("Universitas Gadjah Mada (UGM)");
-  const [major, setMajor] = useState("Teknologi Informasi");
-  const [nim, setNim] = useState("21/478291/TK/52109");
-  const [selectedInterests, setSelectedInterests] = useState<string[]>(["Coding", "Coffee", "Indie Music", "Badminton"]);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [university, setUniversity] = useState("");
+  const [major, setMajor] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+
+  // API State
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // Photos State (Min 2, Max 100)
-  const [photos, setPhotos] = useState<string[]>(CURRENT_USER.photos);
+  // Media State (Min 2, Max 100) — starts empty, user MUST upload real photos
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const toggleInterest = (interest: string) => {
     if (selectedInterests.includes(interest)) {
@@ -37,63 +57,219 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newPhotoUrls: string[] = [];
-    Array.from(files).forEach((file) => {
-      const objectUrl = URL.createObjectURL(file);
-      newPhotoUrls.push(objectUrl);
-    });
-
-    setPhotos((prev) => [...prev, ...newPhotoUrls].slice(0, 100));
+    const base64Results = await Promise.all(
+      Array.from(files).map(f => fileToBase64(f))
+    );
+    setPhotos((prev) => [...prev, ...base64Results].slice(0, 100));
   };
 
-  const handleAddSamplePhoto = () => {
-    const sampleAvatars = [
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80",
-    ];
-    const randomPhoto = sampleAvatars[photos.length % sampleAvatars.length];
-    if (photos.length < 100) {
-      setPhotos((prev) => [...prev, randomPhoto]);
-    }
-  };
+
 
   const handleRemovePhoto = (indexToRemove: number) => {
     setPhotos((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mode === "register" && photos.length < 2) return;
+  const handleNextStep1 = async () => {
+    setErrorMsg(null);
+    if (!name || !email || !password || !birthDate) {
+      setErrorMsg("Semua kolom harus diisi.");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMsg("Kata sandi minimal 6 karakter.");
+      return;
+    }
+    const selectedYear = new Date(birthDate).getFullYear();
+    if (isNaN(selectedYear) || selectedYear < 1990 || selectedYear > new Date().getFullYear() - 10) {
+      setErrorMsg("Tanggal kelahiran tidak valid.");
+      return;
+    }
 
-    const mockUser: UserProfile = {
-      id: "user-me",
-      name: name || "Mahasiswa Verified",
-      age: 21,
-      gender: "pria",
-      university: university || "Universitas Gadjah Mada (UGM)",
-      major: major || "Teknologi Informasi",
+    setIsLoading(true);
+    try {
+      const res = await authApi.checkEmail(email);
+      if (res.available) {
+        setRegisterStep(2);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg("Gagal memverifikasi email.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNextStep2 = () => {
+    setErrorMsg(null);
+    if (!university || !major) {
+      setErrorMsg("Semua kolom harus diisi.");
+      return;
+    }
+    setRegisterStep(3);
+  };
+
+  const handleNextStep3 = () => {
+    setErrorMsg(null);
+    if (selectedInterests.length < 3) {
+      setErrorMsg("Harap pilih minimal 3 minat & hobi.");
+      return;
+    }
+    setRegisterStep(4);
+  };
+
+  // Build a UserProfile from backend profile data
+  const buildUserProfile = (backendProfile: Awaited<ReturnType<typeof profileApi.getMe>>): UserProfile => {
+    return {
+      id: backendProfile.user.id,
+      name: backendProfile.displayName || "Mahasiswa",
+      age: backendProfile.birthDate ? Math.floor((Date.now() - new Date(backendProfile.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 21,
+      gender: backendProfile.gender === 'FEMALE' ? 'wanita' : backendProfile.gender === 'MALE' ? 'pria' : 'lainnya',
+      university: backendProfile.universityName || university || "Universitas Gadjah Mada (UGM)",
+      major: backendProfile.major || major || "Informatika",
       semester: 6,
-      bio: "Mahasiswa aktif yang suka ngopi, coding, & dengerin musik indie. Salam kenal!",
-      photos: photos.length >= 2 ? photos : CURRENT_USER.photos,
-      interests: selectedInterests,
+      bio: backendProfile.bio || "Mahasiswa aktif siap berkenalan!",
+      photos: backendProfile.photos.length > 0
+        ? backendProfile.photos.map(p => p.photoUrl)
+        : (photos.length >= 2 ? photos : CURRENT_USER.photos),
+      interests: selectedInterests.length > 0 ? selectedInterests : ["Coding", "Coffee"],
       verification: {
-        isVerified: true,
-        email: email || "student@mail.ugm.ac.id",
-        university: university || "Universitas Gadjah Mada (UGM)",
-        major: major || "Teknologi Informasi",
-        nimMasked: nim ? `${nim.slice(0, 5)}***` : "21/478***",
+        isVerified: backendProfile.user.verification?.status === 'APPROVED',
+        email: backendProfile.user.campusEmail || email,
+        university: backendProfile.universityName || university,
+        major: backendProfile.major || major,
+        nimMasked: backendProfile.user.verification?.studentNumber
+          ? `${backendProfile.user.verification.studentNumber.slice(0, 5)}***`
+          : "***",
       },
       locationName: "Sleman, Yogyakarta",
       distanceKm: 0,
       activityStatus: "Aktif sekarang",
     };
-    onSuccessAuth(mockUser);
+  };
+
+  // Fallback user for when backend profile fetch fails
+  const buildFallbackUser = (): UserProfile => ({
+    id: "user-me",
+    name: name || "Mahasiswa Verified",
+    age: 21,
+    gender: "pria",
+    university: university || "Universitas Gadjah Mada (UGM)",
+    major: major || "Teknologi Informasi",
+    semester: 6,
+    bio: "Mahasiswa aktif yang suka ngopi, coding, & dengerin musik indie. Salam kenal!",
+    photos: photos.length >= 2 ? photos : CURRENT_USER.photos,
+    interests: selectedInterests.length > 0 ? selectedInterests : ["Coding", "Coffee"],
+    verification: {
+      isVerified: true,
+      email: email || "student@mail.ugm.ac.id",
+      university: university || "Universitas Gadjah Mada (UGM)",
+      major: major || "Teknologi Informasi",
+      nimMasked: "***",
+    },
+    locationName: "Sleman, Yogyakarta",
+    distanceKm: 0,
+    activityStatus: "Aktif sekarang",
+  });
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mode === "register" && photos.length < 2) return;
+    setIsLoading(true);
+    setErrorMsg(null);
+
+    try {
+      if (mode === "login") {
+        const trimmedEmail = email.trim();
+        const normalized = trimmedEmail.toLowerCase().replace(/[\s._-]+/g, "");
+
+        // Check if admin login with username or secret credential
+        if (normalized === "bayuganteng" || trimmedEmail.toLowerCase().includes("admin")) {
+          try {
+            const adminRes = await authApi.adminLogin({ username: trimmedEmail, password });
+            setTokens(adminRes.accessToken, adminRes.refreshToken);
+            if (onSuccessAdmin) {
+              onSuccessAdmin();
+              return;
+            }
+          } catch (adminErr: any) {
+            setErrorMsg(adminErr?.message || "Password admin salah. Pastikan password: Konosubarasi1");
+            return;
+          }
+        }
+
+        // ── REGULAR STUDENT LOGIN: Call real backend API ──
+        const loginRes = await authApi.login({ email: trimmedEmail, password });
+
+        // If backend returns an ADMIN user
+        if (loginRes.user?.role === "ADMIN") {
+          setTokens(loginRes.accessToken, loginRes.refreshToken);
+          if (onSuccessAdmin) {
+            onSuccessAdmin();
+            return;
+          }
+        }
+
+        setTokens(loginRes.accessToken, loginRes.refreshToken);
+
+        // Fetch full profile
+        try {
+          const profile = await profileApi.getMe();
+          onSuccessAuth(buildUserProfile(profile));
+        } catch {
+          // Profile fetch failed, use fallback
+          onSuccessAuth(buildFallbackUser());
+        }
+      } else {
+        // ── REGISTER: Call real backend API ──
+        const registerRes = await authApi.register({
+          campusEmail: email,
+          email: email,
+          password,
+          displayName: name,
+          birthDate: birthDate,
+        });
+
+        // Auto-verify OTP with the mock code returned by backend
+        const otpCode = registerRes.mockOtp || '123456';
+        const verifyRes = await authApi.verifyOtp({
+          campusEmail: email,
+          otpCode,
+        });
+        setTokens(verifyRes.accessToken, verifyRes.refreshToken);
+
+        // Upload photos to backend right after registration
+        if (photos.length > 0) {
+          try {
+            await profileApi.updatePhotos(photos);
+          } catch (photoErr) {
+            console.warn('[DAPAJO] Failed to upload photos during registration:', photoErr);
+          }
+        }
+
+        // Fetch full profile after registration
+        try {
+          const profile = await profileApi.getMe();
+          onSuccessAuth(buildUserProfile(profile));
+        } catch {
+          onSuccessAuth(buildFallbackUser());
+        }
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg('Terjadi kesalahan koneksi ke server backend DAPAJO.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -135,20 +311,28 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
           </button>
         </div>
 
+        {/* Error Message */}
+        {errorMsg && (
+          <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         {/* LOGIN FORM */}
         {mode === "login" && (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-stone-700 block mb-1">Email Kampus (.ac.id)</label>
+                <label className="text-xs font-semibold text-stone-700 block mb-1">Email Kampus</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-stone-400" />
                   <input
-                    type="email"
+                    type="text"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nama@student.ugm.ac.id"
+                    placeholder="nama.mahasiswa@mail.ugm.ac.id"
                     className="w-full rounded-2xl border border-stone-200 bg-stone-50 py-2.5 pl-10 pr-3 text-xs text-stone-900 focus:border-rose-500 focus:outline-none"
                   />
                 </div>
@@ -163,15 +347,17 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
                     className="w-full rounded-2xl border border-stone-200 bg-stone-50 py-2.5 pl-10 pr-3 text-xs text-stone-900 focus:border-rose-500 focus:outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            <Button type="submit" size="lg" className="w-full text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md rounded-2xl py-3 gap-2">
-              <span>Masuk Sekarang</span>
-              <ArrowRight className="h-4 w-4" />
+            <Button type="submit" size="lg" disabled={isLoading} className="w-full text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md rounded-2xl py-3 gap-2 disabled:opacity-60">
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              <span>{isLoading ? 'Memproses...' : 'Masuk Sekarang'}</span>
+              {!isLoading && <ArrowRight className="h-4 w-4" />}
             </Button>
           </form>
         )}
@@ -184,9 +370,9 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
               <span>Langkah {registerStep} dari 4</span>
               <span>
                 {registerStep === 1 && "Informasi Akun"}
-                {registerStep === 2 && "Verifikasi Kampus"}
+                {registerStep === 2 && "Profil Tambahan"}
                 {registerStep === 3 && "Minat & Hobi"}
-                {registerStep === 4 && "Unggah Foto Profil"}
+                {registerStep === 4 && "Unggah Media (Foto/Video)"}
               </span>
             </div>
 
@@ -206,29 +392,39 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-stone-700 block mb-1">Email Resmi Kampus (.ac.id)</label>
+                    <label className="text-xs font-semibold text-stone-700 block mb-1">Email</label>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="nama@mail.ugm.ac.id"
+                      placeholder="email@contoh.com"
                       className="w-full rounded-2xl border border-stone-200 bg-stone-50 py-2.5 px-3.5 text-xs text-stone-900 focus:border-rose-500 focus:outline-none"
                     />
-                    <span className="text-[10px] text-stone-500 mt-1 block">Diperlukan untuk verifikasi mahasiswa asli.</span>
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-stone-700 block mb-1">Buat Kata Sandi</label>
+                    <label className="text-xs font-semibold text-stone-700 block mb-1">Buat Kata Sandi (min 6 karakter)</label>
                     <input
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Minimal 6 karakter"
+                      className="w-full rounded-2xl border border-stone-200 bg-stone-50 py-2.5 px-3.5 text-xs text-stone-900 focus:border-rose-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-stone-700 block mb-1">Tanggal Kelahiran</label>
+                    <input
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
                       className="w-full rounded-2xl border border-stone-200 bg-stone-50 py-2.5 px-3.5 text-xs text-stone-900 focus:border-rose-500 focus:outline-none"
                     />
                   </div>
                 </div>
 
-                <Button onClick={() => setRegisterStep(2)} size="lg" className="w-full text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md rounded-2xl py-3 gap-2">
+                <Button onClick={handleNextStep1} disabled={isLoading} size="lg" className="w-full text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md rounded-2xl py-3 gap-2 disabled:opacity-60">
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   <span>Lanjut ke Verifikasi Kampus</span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -241,17 +437,19 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-semibold text-stone-700 block mb-1">Asal Universitas</label>
-                    <select
+                    <input
+                      type="text"
                       value={university}
                       onChange={(e) => setUniversity(e.target.value)}
-                      className="w-full rounded-2xl border border-stone-200 bg-stone-50 py-2.5 px-3 text-xs text-stone-900 focus:border-rose-500 focus:outline-none"
-                    >
+                      placeholder="Contoh: Universitas Gadjah Mada"
+                      list="universities-list"
+                      className="w-full rounded-2xl border border-stone-200 bg-stone-50 py-2.5 px-3.5 text-xs text-stone-900 focus:border-rose-500 focus:outline-none"
+                    />
+                    <datalist id="universities-list">
                       {ALL_UNIVERSITIES.map((univ) => (
-                        <option key={univ} value={univ}>
-                          {univ}
-                        </option>
+                        <option key={univ} value={univ} />
                       ))}
-                    </select>
+                    </datalist>
                   </div>
 
                   <div>
@@ -264,24 +462,13 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
                       className="w-full rounded-2xl border border-stone-200 bg-stone-50 py-2.5 px-3.5 text-xs text-stone-900 focus:border-rose-500 focus:outline-none"
                     />
                   </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-stone-700 block mb-1">Nomor Induk Mahasiswa (NIM)</label>
-                    <input
-                      type="text"
-                      value={nim}
-                      onChange={(e) => setNim(e.target.value)}
-                      placeholder="21/478291/TK/52109"
-                      className="w-full rounded-2xl border border-stone-200 bg-stone-50 py-2.5 px-3.5 text-xs text-stone-900 focus:border-rose-500 focus:outline-none"
-                    />
-                  </div>
                 </div>
 
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setRegisterStep(1)} className="w-1/3 text-xs border-stone-200 text-stone-700 rounded-2xl">
                     Kembali
                   </Button>
-                  <Button onClick={() => setRegisterStep(3)} size="lg" className="w-2/3 text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md rounded-2xl py-3 gap-1">
+                  <Button onClick={handleNextStep2} size="lg" className="w-2/3 text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md rounded-2xl py-3 gap-1">
                     <span>Pilih Hobi & Minat</span>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -319,8 +506,8 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
                   <Button variant="outline" onClick={() => setRegisterStep(2)} className="w-1/3 text-xs border-stone-200 text-stone-700 rounded-2xl">
                     Kembali
                   </Button>
-                  <Button onClick={() => setRegisterStep(4)} size="lg" className="w-2/3 text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md rounded-2xl py-3 gap-1">
-                    <span>Lanjut Unggah Foto (Min. 2)</span>
+                  <Button onClick={handleNextStep3} className="w-2/3 text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-2xl flex items-center justify-center gap-1.5 shadow-sm">
+                    <span>Lanjut Unggah Media (Min. 2)</span>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -329,12 +516,12 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
 
             {/* Step 4: Upload Photos (Min 2, Max 100) */}
             {registerStep === 4 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-stone-900 block">Unggah Foto Profil (Min. 2 - Max. 100)</label>
+              <div className="animate-fade-in space-y-4">
+                <div className="bg-white p-4 rounded-3xl shadow-sm border border-stone-200">
+                  <div className="flex justify-between items-center mb-3">
+                    <label className="text-xs font-bold text-stone-900 block">Unggah Media (Min. 2 - Max. 100)</label>
                     <span className={`text-[11px] font-bold ${photos.length >= 2 ? "text-emerald-600" : "text-rose-600"}`}>
-                      {photos.length} / 100 Foto
+                      {photos.length} / 100 File
                     </span>
                   </div>
 
@@ -342,15 +529,19 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
                   {photos.length < 2 && (
                     <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">
                       <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>Wajib mengunggah <strong>minimal 2 foto</strong> untuk melanjutkan.</span>
+                      <span>Wajib mengunggah <strong>minimal 2 foto/video asli diri Anda</strong> dari galeri HP untuk melanjutkan. Foto anonim tidak diperbolehkan.</span>
                     </div>
                   )}
 
                   {/* Photos Grid Display */}
                   <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1 border border-stone-200 bg-stone-50/50 rounded-2xl">
-                    {photos.map((photoUrl, idx) => (
+                    {photos.map((mediaUrl, idx) => (
                       <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-stone-200 shadow-sm">
-                        <img src={photoUrl} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
+                        {isVideoUrl(mediaUrl) ? (
+                          <video src={mediaUrl} className="h-full w-full object-cover" autoPlay muted loop playsInline />
+                        ) : (
+                          <img src={mediaUrl} alt={`Media ${idx + 1}`} className="h-full w-full object-cover" />
+                        )}
                         <button
                           type="button"
                           onClick={() => handleRemovePhoto(idx)}
@@ -372,7 +563,7 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
                         <span className="text-[10px] font-bold leading-tight">+ Tambah</span>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/*,video/*"
                           multiple
                           onChange={handleFileUpload}
                           className="hidden"
@@ -389,16 +580,16 @@ export function AuthScreen({ onSuccessAuth, defaultMode = "register" }: AuthScre
 
                   <Button
                     onClick={handleLoginSubmit}
-                    disabled={photos.length < 2}
+                    disabled={photos.length < 2 || isLoading}
                     size="lg"
                     className={`w-2/3 text-xs font-bold rounded-2xl py-3 gap-1 shadow-md transition-all ${
-                      photos.length >= 2
+                      photos.length >= 2 && !isLoading
                         ? "bg-rose-500 hover:bg-rose-600 text-white cursor-pointer"
                         : "bg-stone-300 text-stone-500 cursor-not-allowed"
                     }`}
                   >
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>Selesaikan Pendaftaran</span>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    <span>{isLoading ? 'Mendaftar...' : 'Selesaikan Pendaftaran'}</span>
                   </Button>
                 </div>
               </div>

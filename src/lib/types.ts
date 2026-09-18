@@ -56,6 +56,7 @@ export interface NearbyStudent extends UserProfile {
 
 export interface MatchItem {
   id: string;
+  conversationId?: string;
   user: UserProfile;
   matchedAt: string;
   unread: boolean;

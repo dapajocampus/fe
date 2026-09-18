@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Compass, MapPin, Heart, Building2, Crown, Sparkles, Check, X, ShieldCheck, Lock, CheckCircle2, ChevronLeft, ChevronRight, Image } from "lucide-react";
 import { NearbyStudent } from "@/lib/types";
+import { isVideoUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface NearbyTabProps {
@@ -103,11 +104,18 @@ export function NearbyTab({
             >
               {/* Student Photo */}
               <div className="relative h-44 w-full overflow-hidden bg-stone-100">
-                <img
-                  src={student.photos[0]}
-                  alt={student.name}
-                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
+                {isVideoUrl(student.photos[0]) ? (
+                  <video
+                    src={student.photos[0]}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 pointer-events-none select-none"
+                  />
+                ) : (
+                  <img
+                    src={student.photos[0]}
+                    alt={student.name}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 pointer-events-none select-none"
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-transparent to-transparent" />
 
                 {/* Online status indicator */}
@@ -159,11 +167,19 @@ export function NearbyTab({
           <div className="relative w-full max-w-sm max-h-[78vh] my-auto overflow-y-auto rounded-3xl border border-stone-200 bg-white shadow-2xl space-y-3 scrollbar-none flex flex-col">
             {/* Modal Header Photo Carousel */}
             <div className="relative h-52 w-full bg-stone-900 shrink-0">
-              <img
-                src={selectedStudentForModal.photos[activeModalPhotoIndex] || selectedStudentForModal.photos[0]}
-                alt={selectedStudentForModal.name}
-                className="h-full w-full object-cover transition-all duration-300"
-              />
+              {isVideoUrl(selectedStudentForModal.photos[activeModalPhotoIndex] || selectedStudentForModal.photos[0]) ? (
+                <video
+                  src={selectedStudentForModal.photos[activeModalPhotoIndex] || selectedStudentForModal.photos[0]}
+                  className="w-full h-full object-cover transition-transform duration-500 select-none pointer-events-none"
+                  autoPlay muted loop playsInline
+                />
+              ) : (
+                <img
+                  src={selectedStudentForModal.photos[activeModalPhotoIndex] || selectedStudentForModal.photos[0]}
+                  alt={selectedStudentForModal.name}
+                  className="w-full h-full object-cover transition-transform duration-500 select-none pointer-events-none"
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-transparent to-transparent" />
 
               {/* Photo Indicator Bar */}
@@ -228,7 +244,7 @@ export function NearbyTab({
                 </div>
 
                 <span className="text-[10px] font-bold text-white bg-rose-500 px-2 py-0.5 rounded-xl shadow-sm">
-                  {activeModalPhotoIndex + 1} / {selectedStudentForModal.photos.length} Foto
+                  {activeModalPhotoIndex + 1} / {selectedStudentForModal.photos.length} Media
                 </span>
               </div>
             </div>
@@ -253,7 +269,7 @@ export function NearbyTab({
                 <div className="flex items-center justify-between text-[10px] font-bold text-stone-500 uppercase tracking-wider">
                   <span className="flex items-center gap-1">
                     <Image className="h-3 w-3 text-rose-500" />
-                    Galeri Foto ({selectedStudentForModal.photos.length} Foto)
+                    Galeri Media ({selectedStudentForModal.photos.length} Media)
                   </span>
                   <span>Klik foto untuk melihat</span>
                 </div>
@@ -269,7 +285,11 @@ export function NearbyTab({
                           : "border-stone-200 opacity-60 hover:opacity-100"
                       }`}
                     >
-                      <img src={photoUrl} alt={`Foto ${pIdx + 1}`} className="h-full w-full object-cover" />
+                      {isVideoUrl(photoUrl) ? (
+                        <video src={photoUrl} className="h-full w-full object-cover" autoPlay muted loop playsInline />
+                      ) : (
+                        <img src={photoUrl} alt={`Media ${pIdx + 1}`} className="h-full w-full object-cover" />
+                      )}
                     </button>
                   ))}
                 </div>

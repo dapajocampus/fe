@@ -4,6 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Heart, MessageSquare, X } from "lucide-react";
 import { SwipeProfile, UserProfile } from "@/lib/types";
+import { isVideoUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface MatchPopupProps {
@@ -37,19 +38,35 @@ export function MatchPopup({ matchedProfile, currentUser, onClose, onOpenChat }:
         {/* Dual Avatars */}
         <div className="flex items-center justify-center pt-2">
           <div className="flex items-center -space-x-4">
-            <img
-              src={currentUser.photos[0]}
-              alt={currentUser.name}
-              className="h-16 w-16 rounded-full object-cover border-2 border-rose-500 shadow-sm z-10"
-            />
+            {isVideoUrl(currentUser.photos[0]) ? (
+              <video
+                src={currentUser.photos[0]}
+                className="h-16 w-16 rounded-full object-cover border-2 border-rose-500 shadow-sm z-10"
+                autoPlay muted loop playsInline
+              />
+            ) : (
+              <img
+                src={currentUser.photos[0]}
+                alt={currentUser.name}
+                className="h-16 w-16 rounded-full object-cover border-2 border-rose-500 shadow-sm z-10"
+              />
+            )}
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-white shadow-md z-20">
               <Heart className="h-5 w-5 fill-white" />
             </div>
-            <img
-              src={matchedProfile.photos[0]}
-              alt={matchedProfile.name}
-              className="h-16 w-16 rounded-full object-cover border-2 border-rose-500 shadow-sm z-10"
-            />
+            {isVideoUrl(matchedProfile.photos[0]) ? (
+              <video
+                src={matchedProfile.photos[0]}
+                className="h-16 w-16 rounded-full object-cover border-2 border-rose-500 shadow-sm z-10"
+                autoPlay muted loop playsInline
+              />
+            ) : (
+              <img
+                src={matchedProfile.photos[0]}
+                alt={matchedProfile.name}
+                className="h-16 w-16 rounded-full object-cover border-2 border-rose-500 shadow-sm z-10"
+              />
+            )}
           </div>
         </div>
 

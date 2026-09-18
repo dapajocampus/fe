@@ -1,7 +1,7 @@
 import { SwipeProfile, NearbyStudent, MatchItem, ChatMessage, UserProfile, UserPreferences } from "./types";
 
 // Reliable SVG Avatar Generator Data URIs
-const getStudentAvatar = (name: string, gender: "pria" | "wanita", bgFrom: string, bgTo: string, shirtColor: string) => {
+export const getStudentAvatar = (name: string, gender: "pria" | "wanita", bgFrom: string, bgTo: string, shirtColor: string) => {
   const isFemale = gender === "wanita";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="100%" height="100%">
     <defs>

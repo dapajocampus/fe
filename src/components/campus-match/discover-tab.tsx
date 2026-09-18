@@ -18,7 +18,8 @@ import {
   ShieldAlert,
   Lock,
 } from "lucide-react";
-import { SwipeProfile } from "@/lib/types";
+import { SwipeProfile, UserPreferences } from "@/lib/types";
+import { isVideoUrl } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -223,11 +224,18 @@ export function DiscoverTab({
         {/* Next Card Background Preview */}
         {profiles[currentIndex + 1] && (
           <div className="absolute inset-0 rounded-3xl border border-stone-200 bg-white scale-95 translate-y-3 opacity-60 pointer-events-none overflow-hidden shadow-sm">
-            <img
-              src={profiles[currentIndex + 1].photos[0]}
-              alt="Next Profile"
-              className="h-full w-full object-cover opacity-50"
-            />
+            {isVideoUrl(profiles[currentIndex + 1].photos[0]) ? (
+              <video
+                src={profiles[currentIndex + 1].photos[0]}
+                className="h-full w-full object-cover opacity-50 pointer-events-none select-none"
+              />
+            ) : (
+              <img
+                src={profiles[currentIndex + 1].photos[0]}
+                alt="Next Profile"
+                className="h-full w-full object-cover opacity-50 pointer-events-none select-none"
+              />
+            )}
           </div>
         )}
 
@@ -257,11 +265,19 @@ export function DiscoverTab({
           >
             {/* Photo background */}
             <div className="relative h-full w-full">
-              <img
-                src={currentProfile.photos[photoIndex]}
-                alt={currentProfile.name}
-                className="h-full w-full object-cover pointer-events-none select-none"
-              />
+              {isVideoUrl(currentProfile.photos[photoIndex]) ? (
+                <video
+                  src={currentProfile.photos[photoIndex]}
+                  className="h-full w-full object-cover pointer-events-none select-none"
+                  autoPlay muted loop playsInline
+                />
+              ) : (
+                <img
+                  src={currentProfile.photos[photoIndex]}
+                  alt={currentProfile.name}
+                  className="h-full w-full object-cover pointer-events-none select-none"
+                />
+              )}
 
               {/* Subtle Gradient Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/20 to-transparent pointer-events-none" />
@@ -367,7 +383,10 @@ export function DiscoverTab({
               <div className="absolute bottom-3 left-0 right-0 z-30 flex items-center justify-center gap-3 px-3 pointer-events-auto">
                 {/* 1. BACK */}
                 <button
-                  onClick={onRewind}
+                  onClick={() => {
+                    if (currentIndex > 0) setCurrentIndex((prev) => prev - 1);
+                    onRewind();
+                  }}
                   disabled={!canRewind}
                   className={`flex h-10 w-10 items-center justify-center rounded-full border transition-all shadow-md cursor-pointer ${
                     canRewind

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   User,
   ShieldCheck,
@@ -27,6 +27,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { UserProfile, UserPreferences } from "@/lib/types";
+import { profileApi, isAuthenticated } from "@/lib/api-client";
+import { isVideoUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ALL_INTEREST_OPTIONS } from "@/lib/mock-data";
 import { usePWA } from "@/components/pwa-provider";
@@ -56,6 +58,16 @@ export function ProfileTab({
   // Gallery Photos State & Modal Open State
   const [userPhotos, setUserPhotos] = useState<string[]>(currentUser.photos);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+  // Load photos from backend on mount
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+    profileApi.getMe().then(profile => {
+      if (profile.photos && profile.photos.length > 0) {
+        setUserPhotos(profile.photos.map(p => p.photoUrl));
+      }
+    }).catch(() => {});
+  }, []);
 
   // Compact GPS Map Sync States
   const [currentLocationName, setCurrentLocationName] = useState(currentUser.locationName);
@@ -110,17 +122,34 @@ export function ProfileTab({
     }
   };
 
+  const handleSavePhotos = async (updatedPhotos: string[]) => {
+    setUserPhotos(updatedPhotos);
+    try {
+      await profileApi.updatePhotos(updatedPhotos);
+    } catch (err) {
+      console.error("Failed to save photos to backend", err);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-lg px-4 py-4 space-y-5 pb-24 bg-[#f7f4ee]">
       {/* User Header Profile Card */}
       <div className="relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="relative group shrink-0">
-            <img
-              src={userPhotos[0] || currentUser.photos[0]}
-              alt={currentUser.name}
-              className="h-20 w-20 rounded-2xl object-cover border-2 border-rose-500 shadow-sm"
-            />
+            {isVideoUrl(userPhotos[0] || currentUser.photos[0]) ? (
+              <video
+                src={userPhotos[0] || currentUser.photos[0]}
+                className="h-20 w-20 rounded-2xl object-cover border-2 border-rose-500 shadow-sm"
+                autoPlay muted loop playsInline
+              />
+            ) : (
+              <img
+                src={userPhotos[0] || currentUser.photos[0]}
+                alt={currentUser.name}
+                className="h-20 w-20 rounded-2xl object-cover border-2 border-rose-500 shadow-sm"
+              />
+            )}
             {/* Verified Badge */}
             <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
               <ShieldCheck className="h-4 w-4 fill-emerald-500/20" />
@@ -205,26 +234,50 @@ export function ProfileTab({
         </div>
       </div>
 
-      {/* Verified Student Status Card */}
-      <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center justify-between shadow-sm">
+      {/* Verification Status Card */}
+      <div
+        className={`rounded-3xl border p-4 flex items-center justify-between shadow-xs transition-all ${
+          currentUser.verification?.isVerified
+            ? "border-emerald-500/30 bg-emerald-500/10"
+            : "border-amber-500/30 bg-amber-500/10"
+        }`}
+      >
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-sm">
-            <ShieldCheck className="h-6 w-6 fill-emerald-500/20" />
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-xs ${
+              currentUser.verification?.isVerified ? "bg-emerald-600" : "bg-amber-600"
+            }`}
+          >
+            <ShieldCheck className="h-5 w-5 fill-current/20" />
           </div>
           <div>
             <div className="flex items-center gap-1.5 font-bold text-stone-900 text-xs">
-              <span>Status: Mahasiswa Terverifikasi</span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 fill-emerald-500/20" />
+              <span>
+                {currentUser.verification?.isVerified
+                  ? "Status: Mahasiswa Terverifikasi"
+                  : "Status: Verifikasi Mahasiswa (KTM)"}
+              </span>
+              {currentUser.verification?.isVerified && (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 fill-emerald-500/20" />
+              )}
             </div>
-            <p className="text-[10px] text-stone-600">NIM: {currentUser.verification.nimMasked} • Email Kampus Terkunci</p>
+            <p className="text-[10px] text-stone-600">
+              {currentUser.verification?.isVerified
+                ? `NIM: ${currentUser.verification.nimMasked || "***"} • Terverifikasi Resmi`
+                : "Unggah foto KTM untuk dapat lencana terverifikasi"}
+            </p>
           </div>
         </div>
 
         <button
           onClick={onOpenVerification}
-          className="text-xs font-semibold text-emerald-700 hover:underline cursor-pointer"
+          className={`text-xs font-bold px-3 py-1.5 rounded-full cursor-pointer transition-colors ${
+            currentUser.verification?.isVerified
+              ? "text-emerald-800 bg-emerald-100 hover:bg-emerald-200"
+              : "text-amber-900 bg-amber-200 hover:bg-amber-300"
+          }`}
         >
-          Rincian
+          {currentUser.verification?.isVerified ? "Rincian" : "Verifikasi"}
         </button>
       </div>
 
@@ -240,7 +293,7 @@ export function ProfileTab({
             </div>
             <div>
               <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
-                Kelola Galeri Foto Card
+                Kelola Galeri Media Card
               </h3>
               <span className="text-[10px] text-stone-500">Ditampilkan saat pengguna lain swipe profilmu</span>
             </div>
@@ -248,7 +301,7 @@ export function ProfileTab({
 
           <div className="flex items-center gap-1">
             <span className="text-[11px] font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
-              {userPhotos.length} Foto
+              {userPhotos.length} Media
             </span>
             <ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-rose-500 transition-colors" />
           </div>
@@ -263,7 +316,11 @@ export function ProfileTab({
                 idx === 0 ? "border-2 border-rose-500 shadow-md" : "border-stone-200"
               }`}
             >
-              <img src={photoUrl} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
+              {isVideoUrl(photoUrl) ? (
+                <video src={photoUrl} className="h-full w-full object-cover" autoPlay muted loop playsInline />
+              ) : (
+                <img src={photoUrl} alt={`Media ${idx + 1}`} className="h-full w-full object-cover" />
+              )}
               {idx === 0 && (
                 <span className="absolute bottom-1 left-1 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1">
                   <Star className="h-2.5 w-2.5 fill-white" />
@@ -274,9 +331,12 @@ export function ProfileTab({
           ))}
 
           {/* Dedicated Full Page / Modal Trigger Box */}
-          <div className="flex flex-col items-center justify-center aspect-square rounded-2xl border-2 border-dashed border-rose-300 bg-rose-50/50 group-hover:bg-rose-100/50 text-rose-600 transition-all p-2 text-center shadow-sm">
+          <div 
+             onClick={() => setIsPhotoModalOpen(true)}
+             className="flex flex-col items-center justify-center aspect-square rounded-2xl border-2 border-dashed border-rose-300 bg-rose-50/50 hover:bg-rose-100/50 text-rose-600 transition-all p-2 text-center shadow-sm cursor-pointer"
+          >
             <Plus className="h-6 w-6 mb-1" />
-            <span className="text-[10px] font-bold">Kelola Foto</span>
+            <span className="text-[10px] font-bold">Kelola Media</span>
           </div>
         </div>
       </div>
@@ -428,7 +488,7 @@ export function ProfileTab({
       {isPhotoModalOpen && (
         <PhotoGalleryModal
           photos={userPhotos}
-          onSavePhotos={(updated) => setUserPhotos(updated)}
+          onSavePhotos={handleSavePhotos}
           onClose={() => setIsPhotoModalOpen(false)}
         />
       )}

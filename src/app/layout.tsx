@@ -50,8 +50,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${patrickHand.variable} ${caveat.className}`}>
-      <body className="min-h-screen bg-[#f7f4ee] text-stone-900 antialiased selection:bg-rose-500 selection:text-white">
+    <html lang="id" suppressHydrationWarning className={`${patrickHand.variable} ${caveat.className}`}>
+      <body suppressHydrationWarning className="min-h-screen bg-[#f7f4ee] text-stone-900 antialiased selection:bg-rose-500 selection:text-white">
         <PWAProvider>
           <div className="relative flex min-h-screen flex-col">
             <main className="flex-1">{children}</main>
