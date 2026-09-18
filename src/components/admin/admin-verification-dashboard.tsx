@@ -172,40 +172,14 @@ export function AdminVerificationDashboard({ onLogout }: AdminVerificationDashbo
   const handleApprove = async (user: AdminUser) => {
     setProcessingId(user.id);
     try {
-      if (user.verification?.id) {
-        await verificationApi.review(user.verification.id, true);
+      const hasRealSubmission = user.verification?.id && !user.verification.id.startsWith("manual-");
+      if (hasRealSubmission) {
+        await verificationApi.review(user.verification!.id, true);
       } else {
         await verificationApi.toggleManualVerify(user.id, true);
       }
 
-      setUsers((prev) =>
-        prev.map((u) => {
-          if (u.id === user.id) {
-            return {
-              ...u,
-              verificationStatus: "APPROVED",
-              status: "ACTIVE",
-              verification: u.verification
-                ? {
-                    ...u.verification,
-                    status: "APPROVED",
-                    verifiedAt: new Date().toISOString(),
-                    rejectionReason: null,
-                  }
-                : {
-                    id: "manual-" + Date.now(),
-                    studentNumber: "VERIF-MANUAL-ADMIN",
-                    ktmImageUrl: u.profile?.photos?.[0]?.photoUrl || "",
-                    status: "APPROVED",
-                    verifiedAt: new Date().toISOString(),
-                    rejectionReason: null,
-                    createdAt: new Date().toISOString(),
-                  },
-            };
-          }
-          return u;
-        })
-      );
+      await loadUsers();
 
       if (selectedKtmUser?.id === user.id) {
         setSelectedKtmUser(null);
@@ -219,9 +193,10 @@ export function AdminVerificationDashboard({ onLogout }: AdminVerificationDashbo
 
   // Open Reject Modal
   const openRejectDialog = (user: AdminUser) => {
+    const hasRealSubmission = user.verification?.id && !user.verification.id.startsWith("manual-");
     setRejectModalState({
       isOpen: true,
-      submissionId: user.verification?.id || null,
+      submissionId: hasRealSubmission ? user.verification!.id : null,
       userId: user.id,
       studentName: user.profile?.displayName || user.username || "Mahasiswa",
       reason: "Foto KTM buram atau nama & NIM tidak terbaca dengan jelas.",
@@ -235,37 +210,16 @@ export function AdminVerificationDashboard({ onLogout }: AdminVerificationDashbo
 
     setRejectModalState((prev) => ({ ...prev, isLoading: true }));
     try {
-      if (rejectModalState.submissionId) {
-        await verificationApi.review(rejectModalState.submissionId, false, rejectModalState.reason);
+      const hasRealSubmission = rejectModalState.submissionId && !rejectModalState.submissionId.startsWith("manual-");
+      if (hasRealSubmission) {
+        await verificationApi.review(rejectModalState.submissionId!, false, rejectModalState.reason);
       } else {
-        await verificationApi.toggleManualVerify(rejectModalState.userId, false);
+        await verificationApi.toggleManualVerify(rejectModalState.userId, false, rejectModalState.reason);
       }
 
-      const targetUserId = rejectModalState.userId;
-      const rejectReason = rejectModalState.reason;
+      await loadUsers();
 
-      setUsers((prev) =>
-        prev.map((u) => {
-          if (u.id === targetUserId) {
-            return {
-              ...u,
-              verificationStatus: "REJECTED",
-              status: "PENDING_VERIFICATION",
-              verification: u.verification
-                ? {
-                    ...u.verification,
-                    status: "REJECTED",
-                    verifiedAt: null,
-                    rejectionReason: rejectReason,
-                  }
-                : null,
-            };
-          }
-          return u;
-        })
-      );
-
-      if (selectedKtmUser?.id === targetUserId) {
+      if (selectedKtmUser?.id === rejectModalState.userId) {
         setSelectedKtmUser(null);
       }
 

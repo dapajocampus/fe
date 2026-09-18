@@ -627,10 +627,10 @@ export const verificationApi = {
   },
 
   /** PATCH /verification/admin/users/:userId/toggle-verify */
-  toggleManualVerify: (userId: string, isApproved: boolean) =>
+  toggleManualVerify: (userId: string, isApproved: boolean, rejectionReason?: string) =>
     apiFetch<AdminUser[]>(`/verification/admin/users/${userId}/toggle-verify`, {
       method: 'PATCH',
-      body: JSON.stringify({ isApproved }),
+      body: JSON.stringify({ isApproved, rejectionReason }),
     }),
 
   /** PATCH /verification/:id/review */
